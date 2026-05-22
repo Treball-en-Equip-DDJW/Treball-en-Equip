@@ -195,8 +195,12 @@ class PlayGame extends Phaser.Scene {
         let mida = 25;
         let multiplicadorVelocitat = 1;
 
-        if (probabilitat > 60 && probabilitat <= 90) { // 30% alien mitjà
+        if (probabilitat > 50 && probabilitat <= 80) { // 30% alien mitjà
             tipus = 3; color = 0xffff00; mida = 20; multiplicadorVelocitat = 1.8; // Groc
+        
+        } else if (probabilitat > 80 && probabilitat <= 90) { // 10% alien bo (resta punts si el dispares)
+            tipus = -3; color = 0x0000ff; mida = 20; multiplicadorVelocitat = 1.5; // Blau
+
         } else if (probabilitat > 90) { // 10% alien difícil
             tipus = 5; color = 0xff0000; mida = 15; multiplicadorVelocitat = 3; // Vermell
         }
@@ -230,10 +234,18 @@ class PlayGame extends Phaser.Scene {
         // El que passa quan el disparem
         alien.on('pointerdown', () => {
             dadesPartida.puntuacio += tipus; // Sumem punts segons el tipus d'alien
+
+            // Evitem que la puntuació sigui negativa
+            if (dadesPartida.puntuacio < 0) {
+                dadesPartida.puntuacio = 0;
+            }
+
             this.textPunts.setText(`Punts: ${dadesPartida.puntuacio}`);
 
             // Efecte visual simple de moment per deixar clar que l'hem encertat
-            let explosio = this.add.circle(alien.x, alien.y, mida + 5, 0xffffff);
+            // Fem que si l'alien disparat és el bo, l'explosió sigui diferent
+            let colorExplosio = (tipus < 0) ? 0xff0000 : 0xffffff; // Blanc per aliens bons i dolents, vermell per el bo
+            let explosio = this.add.circle(alien.x, alien.y, mida + 5, colorExplosio);
             this.time.delayedCall(100, () => { explosio.destroy(); }); // Destruïm l'explosió després de 100ms
             alien.destroy();
         });
