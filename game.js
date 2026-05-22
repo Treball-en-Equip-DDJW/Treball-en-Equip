@@ -12,6 +12,9 @@ const config = {
     width: 800,
     height: 600,
     parent: 'game-container',
+    dom: {
+        createContainer: true // Per afegir elements HTML per sobre el canvas
+    },
     physics: {
         default: 'arcade',
         arcade: {
@@ -62,18 +65,30 @@ class AliasInput extends Phaser.Scene {
     }
     create() {
         this.add.text(400, 200, 'INTRODUEIX EL TEU NOM:', { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
-        //De moment fem servir un prompt de JavaScript
-        //Mes endavant crearem un input de text que es vegi maco a la pantalla
-        let aliasTreball = prompt("Introdueix el teu nom:", "Jugador1");
-        if(aliasTreball === null || aliasTreball.trim() === "") {
-            dadesPartida.alias = "Ànonim";
-        } else {
-            dadesPartida.alias = aliasTreball;
-        }
+        
+        // Creem un input HTML en format text perque es vegi be
+        let inputHtml = `
+            <input type="text" id="campAlias" placeholder="..."
+            style="font-size: 24px; padding: 10px; width: 250px; text-align: center; 
+            border-radius: 5px; border: none; outline: none;">
+        `;
 
-        let botoComencar = this.add.text(400, 450, 'COMENÇAR', { fontSize: '28px', fill: '#fff', backgroundColor: '#333' }).setOrigin(0.5).setPadding(10).setInteractive({ useHandCursor: true});
-        botoComencar.on('pointerdown', () => {
-            dadesPartida.puntuacio = 0; // Reset de punts abans de començar la partida
+        // Fem servir el dom de phaser per afegir l'input al mig de la pantalla
+        let inputElement = this.add.dom(400, 300).createFromHTML(inputHtml);
+        
+        // Boto per començar la partida
+        let botoComençar = this.add.text(400, 450, 'COMENÇAR', { fontSize: '28px', fill: '#fff', backgroundColor: '#333' }).setOrigin(0.5).setPadding(10).setInteractive({ useHandCursor: true});
+        botoComençar.on('pointerdown', () => {
+            // Un cop es clica el botó, agafem l'element HTML per la seva ID i extraiem el valor
+            let valorAlias = document.getElementById('campAlias').value;
+            // Comprovem si està buit per posar Anònim per defecte
+            if (valorAlias.trim() === '') {
+                dadesPartida.alias = 'Anònim';
+            } else {
+                dadesPartida.alias = valorAlias;
+            }
+
+            dadesPartida.puntuacio = 0; // Reiniciem la puntuació per a la nova partida
             this.scene.start('PlayGame');
         });
     }
