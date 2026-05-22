@@ -91,6 +91,12 @@ class AliasInput extends Phaser.Scene {
             dadesPartida.puntuacio = 0; // Reiniciem la puntuació per a la nova partida
             this.scene.start('PlayGame');
         });
+
+        // Botó per tornar al menú
+        let botoTornar = this.add.text(400, 500, 'ENRERE', { fontSize: '24px', fill: '#aaa' }).setOrigin(0.5).setPadding(10).setInteractive({ useHandCursor: true});
+        botoTornar.on('pointerdown', () => {
+            this.scene.start('MainMenu');
+        });
     }
 }
 
