@@ -257,6 +257,16 @@ class PauseMenu extends Phaser.Scene {
             this.scene.resume('PlayGame');
             this.scene.stop();
         });
+
+        // Boto per cancelar la partida i sortir al menu
+        let botoSortir = this.add.text(400, 420, 'SORTIR', { fontSize: '28px', fill: '#f00' }).setOrigin(0.5).setInteractive({ useHandCursor: true});
+        botoSortir.on('pointerdown', () => {
+            if (confirm("Tornar al menú principal? No es guardarà la partida actual.")) {
+                this.input.setDefaultCursor('default'); // Recuperem el cursor
+                this.scene.stop('PlayGame');
+                this.scene.start('MainMenu');
+            }
+        });
     }
 }
 
