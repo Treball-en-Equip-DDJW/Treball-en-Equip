@@ -85,30 +85,145 @@ class PlayGame extends Phaser.Scene {
         super('PlayGame');
     }
     create() {
-        this.add.text(400, 100, `Jugador: ${dadesPartida.alias}`, { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
-        this.add.text(400, 250, 'PANTALLA DE JOC', { fontSize: '40px', fill: '#0f0' }).setOrigin(0.5);
+        // Configuració basica del joc i hud
+        this.tempsRestant = 60; // Segons, un minut de partida
+        dadesPartida.puntuacio = 0; // Punts inicials
 
-        // Text indicatiu de com pausar el joc
-        this.add.text(400, 350, 'Tecla ESC per pausar el joc', { fontSize: '20px', fill: '#aaa' }).setOrigin(0.5);
+        this.textPunts = this.add.text(20, 20, `Punts: ${dadesPartida.puntuacio}`, { fontSize: '24px', fill: '#fff' });
+        this.textTemps = this.add.text(650, 20, `Temps: ${this.tempsRestant}s`, { fontSize: '24px', fill: '#fff' });    
+        this.add.text(20, 560, 'Pressiona ESC per pausar', { fontSize: '16px', fill: '#aaa' });
 
-        // Afegim un boto per simular de moment que guanyem punts i anem a GameOver
-        let botoSimularFi = this.add.text(400, 450, 'Simular fi de partida (+50 punts)', { fontSize: '20px', fill: '#ff0', backgroundColor: '#333' }).setOrigin(0.5).setInteractive({ useHandCursor: true});
-        botoSimularFi.on('pointerdown', () => {
-            dadesPartida.puntuacio = 50;
-            this.scene.start('GameOverScene');
+        // Configuracion de la mirilla
+        this.input.setDefaultCursor('none'); // Amaguem el cursor del ratolí
+
+        //Creem una mirilla simple, un cercle blanc amb un punt al mig
+        this.mirilla = this.add.graphics();
+        this.mirilla.lineStyle(2, 0xffffff, 1);
+        this.mirilla.strokeCircle(0, 0, 15);
+        this.mirilla.fillStyle(0xff0000, 1);
+        this.mirilla.fillCircle(0, 0, 2);
+        this.mirilla.setDepth(100); // La mirilla ha d'estar per sobre de qualsevol cosa
+
+        // Grup d'aliens i físiques
+        this.aliensGroup = this.physics.add.group();
+
+        // Timer pel compte enrere
+        this.timerPartida = this.time.addEvent({
+            delay: 1000, // Cada segon
+            callback: this.actualitzarTemps,
+            callbackScope: this,
+            loop: true
+        });
+
+        // Timer de generació d'aliens, que començarà generant un cada 500ms i anirà augmentant la dificultat a mesura que avança la partida
+        this.delaySpawn = 500;
+        this.timerSpawn = this.time.addEvent({
+            delay: this.delaySpawn,
+            callback: this.generarAlien,
+            callbackScope: this,
+            loop: true
         });
 
         // Tecla ESC per pausar el joc
         this.teclaESC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+
+        // Hem de recuperar el cursor quan es pausa el joc
+        this.events.on('pause', () => { this.input.setDefaultCursor('default'); });
+        this.events.on('resume', () => { this.input.setDefaultCursor('none'); });
     }
 
     update() {
+        // Actualitzem la posició de la mirilla per seguir el cursor
+        this.mirilla.x = this.input.activePointer.x;
+        this.mirilla.y = this.input.activePointer.y;
+
         // Si es prem ESC, posem l'escena de pausa en paral·lel i pausem aquesta
         if (Phaser.Input.Keyboard.JustDown(this.teclaESC)) {
             this.scene.launch('PauseMenu');
             this.scene.pause();
         }
+
+        // Destruim els aliens que surtin de la pantalla
+        this.aliensGroup.getChildren().forEach((alien) => {
+            if (alien.y > 650 || alien.y < -50 || alien.x > 850 || alien.x < -50) {
+                alien.destroy();
+            }
+        });
     }
+
+    actualitzarTemps() {
+        this.tempsRestant--;
+        this.textTemps.setText(`Temps: ${this.tempsRestant}s`);
+
+        // Augmentem la dificultat del joc reduint el temps entre spawns a mesura q avança la partida
+        if (this.tempsRestant % 10 === 0 && this.delaySpawn > 400) {
+            this.delaySpawn -= 50; // Spawn més ràpid progressiu
+            this.timerSpawn.delay = this.delaySpawn;
+        }
+
+        // Final de la partida
+        if (this.tempsRestant <= 0) {
+            this.input.setDefaultCursor('default'); // Recuperem el cursor
+            this.scene.start('GameOverScene');
+        }
+    }
+
+    generarAlien() {
+        // Mirem des de quin costat de la pantalla apareixerà. 0 dalt, 1 dreta, 2 baix i 3 esquerra
+        let costat = Phaser.Math.Between(0, 3);
+        let x, y, velocitatX, velocitatY;
+
+        // Decidim el tipus d'alien basat en probabilitats
+        let probabilitat = Phaser.Math.Between(1, 100);
+        let tipus = 1; // Per defecte l'alien d'1 punt
+        let color = 0x00ff00; // Verd
+        let mida = 25;
+        let multiplicadorVelocitat = 1;
+
+        if (probabilitat > 60 && probabilitat <= 90) { // 30% alien mitjà
+            tipus = 3; color = 0xffff00; mida = 20; multiplicadorVelocitat = 1.8; // Groc
+        } else if (probabilitat > 90) { // 10% alien difícil
+            tipus = 5; color = 0xff0000; mida = 15; multiplicadorVelocitat = 3; // Vermell
+        }
+
+        // Calculem la velocitat base, que es 100, multiplicada per tipus d'alien
+        let velBase = 100 * multiplicadorVelocitat;
+
+        // Assignant les cordenades i direcció fora de la pantalla
+        if (costat === 0) { // Dalt
+            x = Phaser.Math.Between(50, 750); y = -30;
+            velocitatX = Phaser.Math.Between(-50, 50); velocitatY = velBase;
+        } else if (costat === 1) { // Dreta
+            x = 830; y = Phaser.Math.Between(50, 550);
+            velocitatX = -velBase; velocitatY = Phaser.Math.Between(-50, 50);
+        } else if (costat === 2) { // Baix
+            x = Phaser.Math.Between(50, 750); y = 630;
+            velocitatX = Phaser.Math.Between(-50, 50); velocitatY = -velBase;
+        } else { // Esquerra
+            x = -30; y = Phaser.Math.Between(50, 550);
+            velocitatX = velBase; velocitatY = Phaser.Math.Between(-50, 50);
+        }
+
+        // Creem l'alien físic que de moment serà un cercle
+        let alien = this.add.circle(x, y, mida, color);
+        this.physics.add.existing(alien);
+        this.aliensGroup.add(alien);
+        // Velocitat al cos
+        alien.body.setVelocity(velocitatX, velocitatY);
+        // Que sigui clicable
+        alien.setInteractive();
+        // El que passa quan el disparem
+        alien.on('pointerdown', () => {
+            dadesPartida.puntuacio += tipus; // Sumem punts segons el tipus d'alien
+            this.textPunts.setText(`Punts: ${dadesPartida.puntuacio}`);
+
+            // Efecte visual simple de moment per deixar clar que l'hem encertat
+            let explosio = this.add.circle(alien.x, alien.y, mida + 5, 0xffffff);
+            this.time.delayedCall(100, () => { explosio.destroy(); }); // Destruïm l'explosió després de 100ms
+            alien.destroy();
+        });
+    }
+
 }
 
 // ESCENA MENÚ DE PAUSA
