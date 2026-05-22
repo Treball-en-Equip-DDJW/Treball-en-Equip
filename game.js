@@ -4,7 +4,10 @@ let dadesPartida = {
     puntuacio: 0
 }
 
-
+// Configuració d'estils per defecte als textos
+const ESTIL_TITOL = { fontSize: '64px', fill: '#0cf', stroke: '#000', strokeThickness: 6 };
+const ESTIL_TEXT = { fontSize: '24px', fill: '#fff' };
+const ESTIL_BOTO = { fontSize: '28px', fill: '#fff' };
 
 // Configuració de la partida
 const config = {
@@ -25,36 +28,67 @@ const config = {
     scene: [] // Afegirem les escenes aquí
 };
 
+// Funció d'ajuda per crear botons estètics uniformes
+function crearBotoEstetic(scene, x, y, text, callback, colorTipus = '#fff') {
+    // Creem un contenidor per agrupar la imatge de fons i el text
+    let botoContainer = scene.add.container(x, y);
+    // Imatge de fons del botó
+    let fonsBoto = scene.add.image(0, 0, 'botoImg').setInteractive({ useHandCursor: true });
+    fonsBoto.setDisplaySize(200, 60); // Ajustem la mida del botó
+    // Text del botó
+    let textBoto = scene.add.text(0, 0, text, { ...ESTIL_BOTO, fill: colorTipus }).setOrigin(0.5);
+    // Afegim els elements al container
+    botoContainer.add([fonsBoto, textBoto]);
+    fonsBoto.on('pointerover', () => {
+        scene.tweens.add({
+            targets: botoContainer,
+            scale: 1.1,
+            duration: 100,
+            ease: 'Power1'
+        });
+    });
+    fonsBoto.on('pointerout', () => {
+        scene.tweens.add({
+            targets: botoContainer,
+            scale: 1.0,
+            duration: 100,
+            ease: 'Power1'
+        });
+    })
+    fonsBoto.on('pointerdown', callback);
+    return botoContainer;
+}
+
+
 // ESCENA DEL MENÚ PRINCIPAL
 class MainMenu extends Phaser.Scene {
     constructor() {
         super('MainMenu');
     }
 
+    preload() {
+        // Carreguem els assets
+        this.load.setBaseURL('./');
+        this.load.image('fonsEspai', 'assets/fons_joc.png');
+        this.load.image('botoImg', 'assets/boto.png');
+        this.load.image('explosioImg', 'assets/explosio.png');
+        this.load.image('alienverd', 'assets/alienverd.png');
+        this.load.image('aliengroc', 'assets/aliengroc.png');
+        this.load.image('alienblau', 'assets/alienblau.png');
+        this.load.image('alienvermell', 'assets/alienvermell.png');
+    }
+
     create() {
-        this.add.text(400, 150, 'ALIEN KILLER', { fontSize: '64px', fill: '#fff' }).setOrigin(0.5);
-        
-        // Boto Jugar
-        let botoJugar = this.add.text(400, 300, 'JUGAR', { fontSize: '32px', fill: '#0f0' }).setOrigin(0.5).setInteractive({ useHandCursor: true});
-        botoJugar.on('pointerdown', () => {
-            this.scene.start('AliasInput');
-        });
-
-        // Boto Leaderboard
-        let botoLeaderboard = this.add.text(400, 380, 'RANKING', { fontSize: '32px', fill: '#0cf' }).setOrigin(0.5).setInteractive({ useHandCursor: true});
-        botoLeaderboard.on('pointerdown', () => {
-            this.scene.start('LeaderboardScene');
-        });
-
-        // Boto Sortir
-        let botoSortir = this.add.text(400, 460, 'SORTIR', { fontSize: '32px', fill: '#f00' }).setOrigin(0.5).setInteractive({ useHandCursor: true});
-        botoSortir.on('pointerdown', () => {
-           if(confirm("Sortir del joc?")) {
+        // Titol amb estil
+        this.add.text(400, 150, 'ALIEN KILLER', ESTIL_TITOL).setOrigin(0.5);
+        // Botons amb la funció
+        crearBotoEstetic(this, 400, 320, 'JUGAR', () => { this.scene.start('AliasInput'); }, '#0cf');
+        crearBotoEstetic(this, 400, 410, 'RANKING', () => { this.scene.start('LeaderboardScene'); }, '#000');
+        crearBotoEstetic(this, 400, 500, 'SORTIR', () => {
+            if (confirm("Sortir del joc?")) {
                 window.close();
-                //Per si el navegador bloqueja windows close
-                this.add.text(400, 550, 'Has sortit del joc.', { fill: '#aaa'}).setOrigin(0.5);
-           }
-        });
+            }
+        }, '#000');
     }
 }
 
@@ -64,39 +98,28 @@ class AliasInput extends Phaser.Scene {
         super('AliasInput');
     }
     create() {
-        this.add.text(400, 200, 'INTRODUEIX EL TEU NOM:', { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
+        this.add.text(400, 200, 'INTRODUEIX EL TEU NOM:', ESTIL_TEXT).setOrigin(0.5);
         
-        // Creem un input HTML en format text perque es vegi be
+        // Creem un input HTML en format que aplica AstroFont
         let inputHtml = `
-            <input type="text" id="campAlias" placeholder="..."
-            style="font-size: 24px; padding: 10px; width: 250px; text-align: center; 
-            border-radius: 5px; border: none; outline: none;">
+            <input type="text" id="campAlias" placeholder="Escriu aquí..." 
+            style="font-size: 24px; padding: 10px; width: 250px; text-align: center; border-radius: 5px; border: 2px solid #fff; background: rgba(0,0,0,0.5); color: #fff; outline: none;">
         `;
 
-        // Fem servir el dom de phaser per afegir l'input al mig de la pantalla
-        let inputElement = this.add.dom(400, 300).createFromHTML(inputHtml);
+        this.add.dom(400, 300).createFromHTML(inputHtml);
         
         // Boto per començar la partida
-        let botoComençar = this.add.text(400, 450, 'COMENÇAR', { fontSize: '28px', fill: '#fff', backgroundColor: '#333' }).setOrigin(0.5).setPadding(10).setInteractive({ useHandCursor: true});
-        botoComençar.on('pointerdown', () => {
-            // Un cop es clica el botó, agafem l'element HTML per la seva ID i extraiem el valor
-            let valorAlias = document.getElementById('campAlias').value;
-            // Comprovem si està buit per posar Anònim per defecte
-            if (valorAlias.trim() === '') {
-                dadesPartida.alias = 'Anònim';
-            } else {
-                dadesPartida.alias = valorAlias;
-            }
-
+        crearBotoEstetic(this, 400, 420, 'COMENÇAR', () => {
+            let campAlias = document.getElementById('campAlias').value;
+            dadesPartida.alias = (campAlias.trim() === '') ? "Anònim" : campAlias;
             dadesPartida.puntuacio = 0; // Reiniciem la puntuació per a la nova partida
             this.scene.start('PlayGame');
-        });
+        }, '#000');
 
-        // Botó per tornar al menú
-        let botoTornar = this.add.text(400, 500, 'ENRERE', { fontSize: '24px', fill: '#aaa' }).setOrigin(0.5).setPadding(10).setInteractive({ useHandCursor: true});
-        botoTornar.on('pointerdown', () => {
+        // Boto per tornar al menú
+        crearBotoEstetic(this, 400, 500, 'TORNAR', () => {
             this.scene.start('MainMenu');
-        });
+        }, '#000');
     }
 }
 
@@ -106,13 +129,14 @@ class PlayGame extends Phaser.Scene {
         super('PlayGame');
     }
     create() {
+        // Imatge de fons del joc
+        this.add.image(400, 300, 'fonsEspai').setOrigin(0.5).setAlpha(0.8); // Fons amb una mica de transparència per destacar els elements del joc
         // Configuració basica del joc i hud
         this.tempsRestant = 60; // Segons, un minut de partida
         dadesPartida.puntuacio = 0; // Punts inicials
-
-        this.textPunts = this.add.text(20, 20, `Punts: ${dadesPartida.puntuacio}`, { fontSize: '24px', fill: '#fff' });
-        this.textTemps = this.add.text(650, 20, `Temps: ${this.tempsRestant}s`, { fontSize: '24px', fill: '#fff' });    
-        this.add.text(20, 560, 'Pressiona ESC per pausar', { fontSize: '16px', fill: '#aaa' });
+        this.textPunts = this.add.text(20, 20, `Punts: ${dadesPartida.puntuacio}`, ESTIL_TEXT);
+        this.textTemps = this.add.text(650, 20, `Temps: ${this.tempsRestant}s`, ESTIL_TEXT);
+        this.add.text(20, 560, 'ESC: Pausar', ESTIL_TEXT);
 
         // Configuracion de la mirilla
         this.input.setDefaultCursor('none'); // Amaguem el cursor del ratolí
@@ -164,11 +188,10 @@ class PlayGame extends Phaser.Scene {
             this.scene.pause();
         }
 
-        // Destruim els aliens que surtin de la pantalla
-        this.aliensGroup.getChildren().forEach((alien) => {
-            if (alien.y > 650 || alien.y < -50 || alien.x > 850 || alien.x < -50) {
-                alien.destroy();
-            }
+        // Rotació d'aliens i eliminació si surten de la pantalla
+        this.aliensGroup.getChildren().forEach(alien => {
+            alien.angle += alien.velocitatRotacio;
+            if (alien.y > 650 || alien.y < -50 || alien.x > 850 || alien.x < -50) { alien.destroy(); }
         });
     }
 
@@ -196,23 +219,22 @@ class PlayGame extends Phaser.Scene {
 
         // Decidim el tipus d'alien basat en probabilitats
         let probabilitat = Phaser.Math.Between(1, 100);
-        let tipus = 1; // Per defecte l'alien d'1 punt
-        let color = 0x00ff00; // Verd
-        let mida = 25;
-        let multiplicadorVelocitat = 1;
-
-        if (probabilitat > 50 && probabilitat <= 80) { // 30% alien mitjà
-            tipus = 3; color = 0xffff00; mida = 20; multiplicadorVelocitat = 1.8; // Groc
         
-        } else if (probabilitat > 80 && probabilitat <= 90) { // 10% alien bo (resta punts si el dispares)
-            tipus = -3; color = 0x0000ff; mida = 20; multiplicadorVelocitat = 1.5; // Blau
+        // Definim els paràmetres buits per omplir segons el tipus d'alien
+        let puntsVal, textureClau, velMult, escala;
 
+        if (probabilitat <= 50) { // 50% alien verd fàcil
+            puntsVal = 1; textureClau = 'alienverd'; velMult = 1; escala = 1.4; // Verd
+        } else if (probabilitat > 50 && probabilitat <= 80) { // 30% alien mitjà
+            puntsVal = 3; textureClau = 'aliengroc'; velMult = 1.8; escala = 1.2; // Groc
+        } else if (probabilitat > 80 && probabilitat <= 90) { // 10% alien bo (resta punts si el dispares)
+            puntsVal = -3; textureClau = 'alienblau'; velMult = 1.5; escala = 1.3; // Blau
         } else if (probabilitat > 90) { // 10% alien difícil
-            tipus = 5; color = 0xff0000; mida = 15; multiplicadorVelocitat = 3; // Vermell
+            puntsVal = 5; textureClau = 'alienvermell'; velMult = 3; escala = 1.1; // Vermell
         }
 
         // Calculem la velocitat base, que es 100, multiplicada per tipus d'alien
-        let velBase = 100 * multiplicadorVelocitat;
+        let velBase = 100 * velMult;
 
         // Assignant les cordenades i direcció fora de la pantalla
         if (costat === 0) { // Dalt
@@ -229,34 +251,54 @@ class PlayGame extends Phaser.Scene {
             velocitatX = velBase; velocitatY = Phaser.Math.Between(-50, 50);
         }
 
-        // Creem l'alien físic que de moment serà un cercle
-        let alien = this.add.circle(x, y, mida, color);
-        this.physics.add.existing(alien);
+        // Creació de l'sprite
+        let alien = this.physics.add.sprite(x, y, textureClau);
+        alien.setScale(escala); // Ajustem la mida visualment
         this.aliensGroup.add(alien);
-        // Velocitat al cos
+
+        // Velocitat de rotació per simular que floten
+        alien.velocitatRotacio = Phaser.Math.Between(1, 3);
+        alien.angle = Phaser.Math.Between(0, 360);
         alien.body.setVelocity(velocitatX, velocitatY);
-        // Que sigui clicable
         alien.setInteractive();
-        // El que passa quan el disparem
         alien.on('pointerdown', () => {
-            dadesPartida.puntuacio += tipus; // Sumem punts segons el tipus d'alien
-
-            // Evitem que la puntuació sigui negativa
-            if (dadesPartida.puntuacio < 0) {
-                dadesPartida.puntuacio = 0;
-            }
-
+            dadesPartida.puntuacio = Math.max(0, dadesPartida.puntuacio + puntsVal); // Evitem que la puntuació sigui negativa
             this.textPunts.setText(`Punts: ${dadesPartida.puntuacio}`);
 
-            // Efecte visual simple de moment per deixar clar que l'hem encertat
-            // Fem que si l'alien disparat és el bo, l'explosió sigui diferent
-            let colorExplosio = (tipus < 0) ? 0xff0000 : 0xffffff; // Blanc per aliens bons i dolents, vermell per el bo
-            let explosio = this.add.circle(alien.x, alien.y, mida + 5, colorExplosio);
-            this.time.delayedCall(100, () => { explosio.destroy(); }); // Destruïm l'explosió després de 100ms
+            // Efecte d'explosió
+            let explosio = this.add.image(alien.x, alien.y, 'explosioImg');
+            explosio.setScale(0.2).setTint((puntsVal < 0) ? 0x0000ff : 0xffffff); // Explosió blava per aliens que resten punts, groga per la resta
+            this.tweens.add({
+                targets: explosio,
+                scale: 1.0,
+                alpha: 0,
+                duration: 200,
+                ease: 'Power2',
+                onComplete: () => explosio.destroy()
+            });
+            // Indicador de punts que apareix al eliminar l'àlien
+            let colorTxt = (puntsVal < 0) ? '#f00' : 'rgb(255, 238, 0)'; // Vermell si resta, groc si suma
+            let signe = (puntsVal < 0) ? '' : '+'; // Afegim un signe + per als punts positius
+            let txtPopup = this.add.text(alien.x, alien.y, `${signe}${puntsVal}`, {
+                ...ESTIL_TEXT, 
+                fontSize: '32px', 
+                fill: colorTxt, 
+                stroke: '#fff', 
+                strokeThickness: 2
+            }).setOrigin(0.5);
+
+            // Petita animació pq el tex pugi cap a dalt i es difumini
+            this.tweens.add({
+                targets: txtPopup,
+                y: alien.y - 50,
+                alpha: 0,
+                duration: 1500,
+                ease: 'Cubic.easeOut',
+                onComplete: () => txtPopup.destroy()
+            });
             alien.destroy();
         });
     }
-
 }
 
 // ESCENA MENÚ DE PAUSA
@@ -268,23 +310,21 @@ class PauseMenu extends Phaser.Scene {
     create() {
         // Fons semi transparent per poder veure el joc de fons
         this.add.rectangle(400, 300, 800, 600, 0x000000, 0.7);
-        this.add.text(400, 250, 'JOC PAUSAT', { fontSize: '48px', fill: '#ff0' }).setOrigin(0.5);
+        this.add.text(400, 250, 'JOC PAUSAT', ESTIL_TITOL).setOrigin(0.5);
 
-        let botoContinuar = this.add.text(400, 380, 'CONTINUAR', { fontSize: '28px', fill: '#fff' }).setOrigin(0.5).setInteractive({ useHandCursor: true});
-        botoContinuar.on('pointerdown', () => {
+        crearBotoEstetic(this, 400, 350, 'CONTINUAR', () => {
             this.scene.resume('PlayGame');
             this.scene.stop();
-        });
+        }, '#000');
 
         // Boto per cancelar la partida i sortir al menu
-        let botoSortir = this.add.text(400, 420, 'SORTIR', { fontSize: '28px', fill: '#f00' }).setOrigin(0.5).setInteractive({ useHandCursor: true});
-        botoSortir.on('pointerdown', () => {
-            if (confirm("Tornar al menú principal? No es guardarà la partida actual.")) {
+        crearBotoEstetic(this, 400, 450, 'SORTIR', () => {
+            if (confirm("Vols sortir de la partida? La teva puntuació no es guardarà.")) {
                 this.input.setDefaultCursor('default'); // Recuperem el cursor
                 this.scene.stop('PlayGame');
                 this.scene.start('MainMenu');
             }
-        });
+        }, '#f00');
     }
 }
 
@@ -295,18 +335,17 @@ class GameOverScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.text(400, 150, 'PARTIDA ACABADA', { fontSize: '48px', fill: '#f00' }).setOrigin(0.5);
-        this.add.text(400, 230, `Jugador: ${dadesPartida.alias}`, { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
-        this.add.text(400, 280, `Puntuació: ${dadesPartida.puntuacio} punts`, { fontSize: '32px', fill: '#0f0' }).setOrigin(0.5);
+        this.add.text(400, 150, 'PARTIDA ACABADA', ESTIL_TITOL).setOrigin(0.5).setTint(0xff0000);
+        this.add.text(400, 230, `Jugador: ${dadesPartida.alias}`, ESTIL_TEXT).setOrigin(0.5);
+        this.add.text(400, 280, `Puntuació: ${dadesPartida.puntuacio} punts`, { ...ESTIL_TEXT, fontSize: '40px', fill: '#0cf' }).setOrigin(0.5);
 
         // Guardar la puntuació pel leaderboard de manera local
         this.guardarPuntuacio(dadesPartida.alias, dadesPartida.puntuacio);
 
         // Boto per tornar al menú
-        let botoMenu = this.add.text(400, 400, 'TORNAR AL MENÚ', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setInteractive({ useHandCursor: true});
-        botoMenu.on('pointerdown', () => {
+        crearBotoEstetic(this, 400, 480, 'MENÚ', () => {
             this.scene.start('MainMenu');
-        });
+        }, '#000');
     }
 
     guardarPuntuacio(alias, puntuacio) {
@@ -330,26 +369,27 @@ class LeaderboardScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.text(400, 100, 'TOP 5 PUNTUACIONS', { fontSize: '40px', fill: '#0cf' }).setOrigin(0.5);
+        this.add.text(400, 100, 'TOP 5 PUNTUACIONS', ESTIL_TITOL).setOrigin(0.5).setTint(0x00ffff);
 
         // Agafem el leaderboard de la memòria del navegador
         let leaderboard = JSON.parse(localStorage.getItem('alien_killer_leaderboard')) || [];
 
         // Mostrem les puntuacions
         if (leaderboard.length === 0) {
-            this.add.text(400, 300, 'No hi ha partides registrades.', { fontSize: '20px', fill: '#aaa' }).setOrigin(0.5);
+            this.add.text(400, 300, 'No hi ha partides registrades.', { ...ESTIL_TEXT, fill: '#aaa' }).setOrigin(0.5);
         } else {
             leaderboard.forEach((element, index) => {
+                // Fem que el primer sigui daurat
+                let color = (index === 0) ? '#ff0' : '#fff';
                 let textPuntuacio = `${index + 1}. ${element.nom} - ${element.puntuacio} punts`;
-                this.add.text(400, 200 + index * 40, textPuntuacio, { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
+                this.add.text(400, 200 + index * 40, textPuntuacio, { ...ESTIL_TEXT, fill: color }).setOrigin(0.5);
             });
         }
 
         // Boto enrere
-        let botoEnrere = this.add.text(400, 500, 'TORNAR', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5).setInteractive({ useHandCursor: true});
-        botoEnrere.on('pointerdown', () => {
+        crearBotoEstetic(this, 400, 520, 'TORNAR', () => {
             this.scene.start('MainMenu');
-        });
+        }, '#000');
     }
 }
 
